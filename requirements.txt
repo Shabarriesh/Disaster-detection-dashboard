@@ -25,7 +25,7 @@ aiohappyeyeballs==2.6.1
 aiosignal==1.4.0
 
 # Utilities
-rich==14.2.0
+
 markdown-it-py==4.0.0
 mdurl==0.1.2
 pyparsing==3.2.5
@@ -59,3 +59,4 @@ pyarrow==22.0.0
 
 # Narwhals (if used by your app)
 narwhals==2.9.0
+
