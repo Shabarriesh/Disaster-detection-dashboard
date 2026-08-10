@@ -3,6 +3,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import joblib
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
 import bcrypt
@@ -11,9 +12,14 @@ import os
 from twilio.rest import Client
 
 # ------------------- Twilio Config -------------------
-TWILIO_SID = "***REMOVED_SID***"
-TWILIO_TOKEN = "***REMOVED_TOKEN***"
-TWILIO_PHONE = "***REMOVED_PHONE***"
+try:
+    TWILIO_SID = st.secrets["TWILIO_SID"]
+    TWILIO_TOKEN = st.secrets["TWILIO_TOKEN"]
+    TWILIO_PHONE = st.secrets["TWILIO_PHONE"]
+except:
+    TWILIO_SID = os.getenv("TWILIO_SID", "")
+    TWILIO_TOKEN = os.getenv("TWILIO_TOKEN", "")
+    TWILIO_PHONE = os.getenv("TWILIO_PHONE", "")
 
 USERS_FILE = "users.json"
 REMEMBER_FILE = "remember_user.json"
@@ -133,6 +139,20 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
+@st.cache_resource
+def load_models():
+    models = {}
+    try:
+        models['Earthquake'] = joblib.load('models/earthquake_model.joblib')
+        models['Flood'] = joblib.load('models/flood_model.joblib')
+        models['Flood_LE'] = joblib.load('models/flood_le.joblib')
+        models['Hurricane'] = joblib.load('models/hurricane_model.joblib')
+    except Exception as e:
+        st.warning("ML Models not found in models/ directory. Falling back to rule-based logic.")
+    return models
+
+models = load_models()
+
 disaster_type = st.selectbox("Select Disaster Type", ["Earthquake", "Flood", "Hurricane"])
 st.session_state.phone = st.text_input("📱 Phone Number(s) for SMS (comma-separated)", value=st.session_state.get("phone", ""))
 
@@ -151,23 +171,60 @@ if disaster_type == "Earthquake":
     humidity = st.number_input("Humidity (%)", value=60.0)
     wind_speed = st.number_input("Wind Speed (km/h)", value=15.0)
     magnitude = st.number_input("Magnitude", min_value=0.0, max_value=10.0, value=5.0)
-    risk = magnitude >= 6.0
+    
+    model = models.get('Earthquake')
+    if model:
+        pred = model.predict([[temperature, humidity, magnitude]])[0]
+        risk = bool(pred == 1)
+        proba = model.predict_proba([[temperature, humidity, magnitude]])[0][1] * 100
+    else:
+        risk = magnitude >= 6.0
+        proba = None
+        
 elif disaster_type == "Flood":
     rainfall = st.number_input("Rainfall (mm)", min_value=0.0, value=50.0)
     river_level = st.number_input("River Level (m)", min_value=0.0, value=3.0)
     soil_moisture = st.number_input("Soil Moisture (%)", min_value=0.0, value=40.0)
-    risk = (rainfall >= 100.0) and (river_level >= 5.0) and (soil_moisture >= 70.0)
+    
+    model = models.get('Flood')
+    le = models.get('Flood_LE')
+    if model and le:
+        try:
+            sm_encoded = le.transform([int(soil_moisture)])[0]
+        except:
+            sm_encoded = 0
+        pred = model.predict([[rainfall, river_level, sm_encoded]])[0]
+        risk = bool(pred == 1)
+        proba = model.predict_proba([[rainfall, river_level, sm_encoded]])[0][1] * 100
+    else:
+        risk = (rainfall >= 100.0) and (river_level >= 5.0) and (soil_moisture >= 70.0)
+        proba = None
+        
 else:
     temperature = st.number_input("Temperature (°C)", value=28.0)
     humidity = st.number_input("Humidity (%)", value=70.0)
     wind_speed = st.number_input("Wind Speed (km/h)", min_value=0.0, value=80.0)
-    risk = (wind_speed >= 120.0) and (humidity >= 75.0) and (temperature >= 27.0)
+    
+    model = models.get('Hurricane')
+    if model:
+        pred = model.predict([[temperature, humidity, wind_speed]])[0]
+        risk = bool(pred == 1)
+        proba = model.predict_proba([[temperature, humidity, wind_speed]])[0][1] * 100
+    else:
+        risk = (wind_speed >= 120.0) and (humidity >= 75.0) and (temperature >= 27.0)
+        proba = None
 
 if st.button("Predict Risk"):
     if risk:
-        st.error(f"⚠️ High likelihood of a {disaster_type} detected.")
+        msg = f"⚠️ High likelihood of a {disaster_type} detected."
+        if proba is not None:
+            msg += f" (Model confidence: {proba:.1f}%)"
+        st.error(msg)
         sent = send_warning_sms(disaster_type)
         if sent:
             st.success("📢 SMS alert sent successfully!")
     else:
-        st.success(f"✅ No immediate risk of {disaster_type} detected.")
+        msg = f"✅ No immediate risk of {disaster_type} detected."
+        if proba is not None:
+            msg += f" (Model confidence: {proba:.1f}%)"
+        st.success(msg)
