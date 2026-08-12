@@ -1,68 +1,158 @@
 # Disaster Detection Dashboard
 
-## Problem Statement
-The Disaster Detection Dashboard is an experimental, prototype early warning system designed to predict the risk of natural disasters based on environmental conditions. It allows users to manually input current weather metrics and receive risk assessments via a web interface, with the option for automated SMS alerts.
+This project is an educational prototype that demonstrates an end-to-end workflow for applying trained machine-learning models to environmental inputs through a Streamlit interface. It showcases how to train, serialize, and serve predictive models within a web application to assess environmental risks.
 
-## Supported Disasters
-- **Earthquake**
-- **Flood**
-- **Hurricane**
+## Dashboard Preview
 
-## Project Workflow
-1. User creates an account or logs in via a custom bcrypt-secured system.
-2. User selects a disaster category from the dashboard.
-3. User manually inputs environmental metrics (e.g., Temperature, Humidity, Wind Speed, Rainfall).
-4. The dashboard processes these inputs through pre-trained Machine Learning models (or rule-based fallbacks).
-5. If a high risk is detected, a warning is displayed.
-6. An automated Twilio SMS alert is sent to registered phone numbers.
+<!-- A real dashboard screenshot can be added here later -->
 
-## Machine Learning Models
-This project utilizes baseline models trained on historical dataset samples. The trained models are saved as `.joblib` files and loaded directly into the dashboard for real-time inference.
+## Overview
 
-* **Flood Model:** Random Forest Classifier
-* **Hurricane Model:** Random Forest Classifier (with StandardScaler pipeline)
-* **Earthquake Model:** Logistic Regression
+The dashboard explores the integration of machine learning classification models to evaluate the risk of natural disasters based on environmental conditions. It supports three disaster categories: **Earthquake**, **Flood**, and **Hurricane**. 
 
-## Data Preprocessing
-The models use standard preprocessing steps. For Hurricane prediction, `StandardScaler` is fit on the training data and preserved via an `sklearn` Pipeline. For Flood prediction, `LabelEncoder` is used for soil moisture categories. 
+Through the application, users can manually input environmental metrics or upload dataset previews to assess the current risk level. The dashboard dynamically loads pre-trained `scikit-learn` models to provide risk predictions and confidence probabilities. If high risk is detected, the system can optionally trigger SMS alerts via a Twilio API integration.
+
+## Key Features
+
+- **Disaster Selection**: Switch between Earthquake, Flood, and Hurricane risk assessment modes.
+- **Manual Prediction Inputs**: Dynamic forms for inputting relevant environmental features (e.g., temperature, wind speed, rainfall, river level).
+- **CSV Upload and Preview**: Functionality to upload and preview historical environmental datasets via Pandas.
+- **Trained Model Loading**: Serialized model ingestion at runtime using Joblib.
+- **Prediction Probability/Confidence**: Display of the model's confidence percentage alongside the binary risk prediction.
+- **User Registration/Login**: Basic authentication system handling user signup and session management.
+- **Bcrypt Password Hashing**: Passwords are securely hashed and validated at runtime.
+- **Twilio SMS Alerts**: Configurable automated SMS warnings triggered when a high risk is detected.
+- **Model Fallback Logic**: Hardcoded rule-based thresholds are used as a fallback if the trained models fail to load or are unavailable.
+
+## Engineering Highlights
+
+- **Inference Integration**: Integrated serialized scikit-learn models into a Streamlit inference workflow.
+- **Separation of Concerns**: Separated model training and evaluation logic from the application layer.
+- **Model Persistence**: Used Joblib to persist and load trained model artifacts.
+- **Runtime Preprocessing**: Implemented preprocessing required for model inference.
+- **Prediction Transparency**: Added model probability/confidence outputs to prediction results.
+- **Secure Authentication**: Implemented bcrypt-based password hashing for user authentication.
+- **External Notifications**: Integrated Twilio for conditional SMS notifications.
+- **Robustness**: Added fallback prediction logic when trained models are unavailable.
+- **Clean Structure**: Structured datasets and model artifacts into dedicated directories.
+- **Security-Conscious**: Executed a strict repository cleanup, keeping runtime credentials completely outside the tracked source code.
+
+## Machine Learning Pipeline
+
+The project implements a straightforward pipeline to handle data from raw CSVs to interactive inference:
+
+Data → preprocessing → model training → model serialization → model loading → user input → prediction → risk assessment
+
+- **Pandas**: Used for loading the historical datasets (`.csv`), splitting features/targets, and rendering DataFrame previews in the dashboard.
+- **NumPy**: Employed for vectorized conditional logic during target variable generation.
+- **scikit-learn**: Provides the classification algorithms (`RandomForestClassifier`, `LogisticRegression`), preprocessing utilities (`StandardScaler`, `LabelEncoder`), and evaluation metrics.
+- **Joblib**: Handles the serialization (`save_models.py`) and deserialization (`disaster.py`) of the trained model artifacts to enable fast inference without retraining.
+
+## Models
+
+| Disaster | Model | Preprocessing / Notes |
+|----------|-------|-----------------------|
+| Earthquake | Logistic Regression | No preprocessing. The target is synthetically derived from the `Magnitude` feature. |
+| Flood | Random Forest | `LabelEncoder` applied to Soil Moisture. The target is synthetically derived from `Rainfall` and `River Level`. |
+| Hurricane | Random Forest | Features are standardized using `StandardScaler` inside a `Pipeline`. Target uses the native dataset label. |
 
 ## Model Evaluation
-* **Hurricane Model:** Achieved an indicative ~90.9% test accuracy.
-* **Earthquake Model:** Achieved 100% test accuracy. *(Note: This is invalid and highly inflated due to known target leakage in the original training methodology, where the target was mathematically derived from an input feature).*
-* **Flood Model:** Evaluated at 0% test accuracy due to the dataset containing only a single test sample that was incorrectly predicted.
 
-## Streamlit Dashboard
-The frontend is built using Streamlit with custom CSS. It features:
-* Disaster selection menus.
-* Slider/numeric inputs matching the model features.
-* Model confidence/probability displays (e.g., "Model confidence: 78.5%").
+| Model | Reported Accuracy | Evaluation Caveat |
+|---|---:|---|
+| Earthquake | 100% | Target is mathematically derived from Magnitude; target leakage makes this result unreliable |
+| Hurricane | ~91% | Small dataset; not representative of production performance |
+| Flood | 0% | Extremely small test split; only one test sample |
 
-## Twilio SMS Alerts
-The dashboard integrates with the Twilio API. If a disaster's predicted likelihood is classified as high risk, the system dispatches SMS warnings to user-provided phone numbers.
-
-## Authentication
-The application includes a custom-built JSON storage authentication system. Passwords are securely hashed and checked using the `bcrypt` library.
+These results are included for transparency and should not be interpreted as production-level model performance.
 
 ## Limitations
-This is an educational/portfolio prototype and should **not** be used for actual disaster prediction. 
 
-* **Dataset Sizes:** The datasets used for model training are extremely small and not statistically robust for real-world modeling. 
-  * `flood.csv`: 4 rows
-  * `hurricane.csv`: 51 rows
-  * `earthquake.csv`: 53 rows
-* **Known ML Limitations:** The Earthquake and Flood models currently suffer from target leakage, where the input features deterministically define the target label.
-* **No Real-time API:** The application does not automatically fetch live weather data; all inputs must be manually provided by the user.
+As an educational prototype, this system has several limitations:
+- Datasets used for training are extremely small and not representative of real-world meteorological datasets.
+- Certain target variables are artificially derived directly from input features, leading to target leakage in training.
+- The evaluation metrics should not be construed as indicative of a real production deployment.
 
-## Project Structure
+## Application Architecture
+
+```text
+Disaster-detection-dashboard/
+├── data/
+│   ├── earthquake.csv
+│   ├── flood.csv
+│   └── hurricane.csv
+├── models/
+│   ├── earthquake_model.joblib
+│   ├── flood_model.joblib
+│   ├── flood_le.joblib
+│   └── hurricane_model.joblib
+├── disaster.py
+├── save_models.py
+├── evaluate_metrics.py
+├── requirements.txt
+├── runtime.txt
+├── .gitignore
+├── users.example.json
+└── README.md
 ```
-├── app.py / disaster.py        # Streamlit dashboard application
-├── save_models.py              # Script to train and export ML models
-├── models/                     # Directory containing trained .joblib models
-├── *.csv                       # Datasets
-└── users.json                  # Encrypted user storage
+
+## Technology Stack
+
+**Programming**
+- Python
+
+**Data & Machine Learning**
+- Pandas
+- NumPy
+- Scikit-learn
+- Joblib
+
+**Application**
+- Streamlit
+
+**Authentication / Security**
+- bcrypt
+
+**External Services**
+- Twilio
+
+**Development**
+- Git / GitHub
+
+## Running the Project
+
+1. Clone the repository:
+```bash
+git clone https://github.com/Shabarriesh/Disaster-detection-dashboard.git
+cd Disaster-detection-dashboard
 ```
 
-## How to Run
-1. Install dependencies: `pip install -r requirements.txt`
-2. Configure Twilio credentials in `.streamlit/secrets.toml` or as environment variables (`TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_PHONE`).
-3. Run the Streamlit application: `streamlit run disaster.py`
+2. Create and activate a virtual environment:
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+3. Install the requirements:
+```bash
+pip install -r requirements.txt
+```
+
+4. Configure Twilio credentials safely (Optional):
+To enable SMS alerts, set the following environment variables or add them to your Streamlit secrets file (`.streamlit/secrets.toml`):
+- `TWILIO_SID`
+- `TWILIO_TOKEN`
+- `TWILIO_PHONE`
+
+5. Run the Streamlit application:
+```bash
+streamlit run disaster.py
+```
+
+## Security Notes
+
+- **Credentials Excluded**: Runtime credentials and API keys are intentionally excluded from source control.
+- **Environment Variables**: Twilio credentials should be supplied through secure environment variables or local Streamlit secrets.
+- **Private Data Excluded**: User and runtime JSON files containing private session information and password hashes (`users.json`, `remember_me.json`, etc.) are actively excluded via `.gitignore`.
+- **Safe Templates**: The tracked `users.example.json` is strictly provided as a safe structural template.
+- The repository must never contain real API credentials or actual user data.
