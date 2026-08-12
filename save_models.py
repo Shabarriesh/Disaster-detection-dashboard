@@ -49,7 +49,7 @@ def print_metrics(name, y_test, y_pred, y_train_len, y_test_len, leaked=False):
 # FLOOD MODEL (Preserving existing logic)
 # ----------------------------------------
 try:
-    df_flood = pd.read_csv('flood.csv')
+    df_flood = pd.read_csv('data/flood.csv')
     le = LabelEncoder()
     # PRESERVING LEAKAGE: original code fits le before split, and uses rainfall/river level in features
     df_flood['Soil Moisture (%)'] = le.fit_transform(df_flood['Soil Moisture (%)'])
@@ -75,7 +75,7 @@ except Exception as e:
 # HURRICANE MODEL
 # ----------------------------------------
 try:
-    df_hurr = pd.read_csv('hurricane.csv')
+    df_hurr = pd.read_csv('data/hurricane.csv')
     X_h = df_hurr[['Temperature (°C)', 'Humidity (%)', 'Wind Speed (km/h)']]
     y_h = df_hurr['Hurricane']
     
@@ -99,7 +99,7 @@ except Exception as e:
 # EARTHQUAKE MODEL (Preserving existing logic)
 # ----------------------------------------
 try:
-    df_eq = pd.read_csv('earthquake.csv')
+    df_eq = pd.read_csv('data/earthquake.csv')
     # PRESERVING LEAKAGE: target is based on magnitude, which is an input feature
     df_eq['Earthquake'] = np.where(df_eq['Magnitude'] > 6.0, 1, 0)
     

@@ -16,3 +16,9 @@ __pycache__/
 
 # Temporary files
 disaster.txt
+
+# Application state & private user data
+users.json
+remember_me.json
+remember_user.json
+prediction_logs.json

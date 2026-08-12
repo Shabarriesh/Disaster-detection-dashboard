@@ -10,7 +10,7 @@ warnings.filterwarnings('ignore')
 
 # Flood
 try:
-    df = pd.read_csv('flood.csv')
+    df = pd.read_csv('data/flood.csv')
     le = LabelEncoder()
     df['Soil Moisture (%)'] = le.fit_transform(df['Soil Moisture (%)'])
     df['Flood'] = (df['Rainfall (mm)'] > 60) | (df['River Level (m)'] > 60 )
@@ -26,7 +26,7 @@ except Exception as e:
 
 # Hurricane
 try:
-    df2 = pd.read_csv('hurricane.csv')
+    df2 = pd.read_csv('data/hurricane.csv')
     X = df2[['Temperature (°C)', 'Humidity (%)', 'Wind Speed (km/h)']]
     y = df2['Hurricane']
     X_train, X_test, y_train, y_test2 = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -42,7 +42,7 @@ except Exception as e:
 
 # Earthquake
 try:
-    df3 = pd.read_csv('earthquake.csv')
+    df3 = pd.read_csv('data/earthquake.csv')
     df3['Earthquake'] = np.where(df3['Magnitude'] > 6.0, 1, 0)
     X = df3[['Temperature (°C)', 'Humidity (%)', 'Magnitude']]
     y = df3['Earthquake']
